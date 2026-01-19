@@ -83,7 +83,7 @@ inventory management, cart, order processing, payment handling, notifications, a
 - Apache Kafka (Event-driven communication)
 - Resilience4j (Fault tolerance & retries)
 - MySQL & Redis
-- Zipkin & Sleuth (Distributed tracing)
+- Zipkin (Distributed tracing)
 
 ## Key Features
 
