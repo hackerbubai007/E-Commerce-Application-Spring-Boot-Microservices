@@ -1,6 +1,6 @@
 spring:
   application:
-    name: Online-Food-Order-Service
+    name: User-Microservice
 
   profiles:
     active: dev

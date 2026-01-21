@@ -6,7 +6,7 @@ spring:
     config:
       server:
         git:
-          uri: https://github.com/hackerbubai007/Advance_Java_Projects.git
+          uri: https://github.com/hackerbubai007/E-Commerce-Application-Spring-Boot-Microservices.git
           default-label: main
           clone-on-start: true 
-          search-paths: config-repo
+          search-paths: Config-Repo

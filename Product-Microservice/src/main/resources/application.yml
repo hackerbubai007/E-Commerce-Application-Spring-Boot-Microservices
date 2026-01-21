@@ -1,0 +1,60 @@
+spring:
+  application:
+    name: Product-Microservice
+
+  profiles:
+    active: dev
+
+  config:
+    import: "configserver:http://localhost:8888"
+
+
+# ============================================================
+# Resilience4j Configuration
+# First: Kafka (Retry + Circuit Breaker)
+# Then: Payment Service (Feign Client) (Retry + Circuit Breaker)
+# ============================================================
+
+resilience4j:
+
+  # ------------------------------------------------------------
+  # Kafka Retry Configuration
+  # If Kafka producer fails or broker is slow/down,
+  # it will retry automatically
+  # ------------------------------------------------------------
+  retry:
+    instances:
+      kafkaRetry:
+        max-attempts: 3
+        wait-duration: 2s
+
+      inventoryServiceRetry:
+        max-attempts: 3
+        wait-duration: 2s
+
+
+  # ------------------------------------------------------------
+  # Circuit Breaker Configuration
+  # If Kafka or Payment Service keeps failing,
+  # circuit breaker will open and stop requests temporarily
+  # ------------------------------------------------------------
+  circuitbreaker:
+    instances:
+      kafkaPublisher:
+        failure-rate-threshold: 50
+        sliding-window-size: 10
+        wait-duration-in-open-state: 30s
+
+      inventoryServiceCB:
+        failure-rate-threshold: 50
+        sliding-window-size: 10
+        wait-duration-in-open-state: 10s
+
+
+# ------------------------------------------------------------
+# Logging for Resilience4j & Feign Debugging
+# ------------------------------------------------------------
+logging:
+  level:
+    io.github.resilience4j.retry: DEBUG
+    org.springframework.cloud.openfeign: DEBUG

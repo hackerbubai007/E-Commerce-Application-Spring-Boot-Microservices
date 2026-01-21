@@ -5,7 +5,6 @@ import java.util.List;
 
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import com.e_com.entity.AddressEntity;
@@ -29,7 +28,6 @@ public class UserServiceImpl implements IUserService {
     @Autowired
     private ModelMapper modelMapper;
 
-    private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
 
     // ---------------- ADD USER ----------------
     @Override
@@ -42,7 +40,7 @@ public class UserServiceImpl implements IUserService {
         user.setUserName(request.getUserName());
         user.setEmailId(request.getEmailId());
         user.setPhoneNumber(request.getPhoneNumber());
-        user.setPassword(passwordEncoder.encode(request.getPassword()));
+        user.setPassword((request.getPassword()));
         user.setCreatedAt(LocalDateTime.now());
         user.setUpdatedAt(LocalDateTime.now());
 
