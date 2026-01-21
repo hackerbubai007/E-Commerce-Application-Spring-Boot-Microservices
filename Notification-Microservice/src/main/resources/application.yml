@@ -1,0 +1,9 @@
+spring:
+  application:
+    name: Notification-Microservice
+
+  profiles:
+    active: dev
+
+  config:
+    import: "configserver:http://localhost:8888"
