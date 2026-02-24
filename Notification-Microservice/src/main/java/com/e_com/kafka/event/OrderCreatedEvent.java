@@ -1,11 +1,10 @@
 package com.e_com.kafka.event;
 
-public class OrderEvent {
 
+public class OrderCreatedEvent {
 	private Long orderId;
 	private Long userId;
 	private Double totalAmount;
-	private String status;
 
 	public Long getOrderId() {
 		return orderId;
@@ -31,17 +30,6 @@ public class OrderEvent {
 		this.totalAmount = totalAmount;
 	}
 
-	public String getStatus() {
-		return status;
-	}
 
-	public void setStatus(String status) {
-		this.status = status;
-	}
 
-	public OrderEvent() {
-		// TODO Auto-generated constructor stub
-	}
-
-	// getters & setters
 }

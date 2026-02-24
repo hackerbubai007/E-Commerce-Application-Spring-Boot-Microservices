@@ -4,10 +4,14 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 
+import com.e_com.kafka.event.OrderCreatedEvent;
+import com.e_com.kafka.event.OrderPaidEvent;
+import com.e_com.kafka.event.OrderPaymentFailedEvent;
+
 @Service
 public class OrderEventProducer {
 
-    private final KafkaTemplate<String, String> kafkaTemplate;
+    private final KafkaTemplate<String, Object> kafkaTemplate;
 
     @Value("${kafka.topic.order-created}")
     private String orderCreatedTopic;
@@ -18,21 +22,22 @@ public class OrderEventProducer {
     @Value("${kafka.topic.order-payment-failed}")
     private String orderPaymentFailedTopic;
 
-    public OrderEventProducer(KafkaTemplate<String, String> kafkaTemplate) {
+    public OrderEventProducer(KafkaTemplate<String, Object> kafkaTemplate) {
         this.kafkaTemplate = kafkaTemplate;
     }
 
-    public void sendOrderCreatedEvent(String msg) {
-        kafkaTemplate.send(orderCreatedTopic, msg);
-        System.out.println("ORDER_CREATED sent: " + msg);
+    public void sendOrderCreatedEvent(OrderCreatedEvent event) {
+        kafkaTemplate.send(orderCreatedTopic, event);
+        System.out.println("ORDER_CREATED sent: " + event);
     }
 
-    public void sendOrderPaidEvent(String msg) {
-        kafkaTemplate.send(orderPaidTopic, msg);
-        System.out.println("ORDER_PAYMENT DONE: " + msg);
+    public void sendOrderPaidEvent(OrderPaidEvent event) {
+        kafkaTemplate.send(orderPaidTopic, event);
+        System.out.println("ORDER_PAID sent: " + event);
     }
 
-    public void sendOrderPaymentFailedEvent(String msg) {
-        kafkaTemplate.send(orderPaymentFailedTopic, msg);
+    public void sendOrderPaymentFailedEvent(OrderPaymentFailedEvent event) {
+        kafkaTemplate.send(orderPaymentFailedTopic, event);
+        System.out.println("ORDER_PAYMENT_FAILED sent: " + event);
     }
 }

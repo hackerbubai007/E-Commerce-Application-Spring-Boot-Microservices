@@ -25,7 +25,7 @@ public class ReviewController {
         this.reviewService = reviewService;
     }
 
-    @PostMapping
+    @PostMapping("/create")
     public ReviewResponse createReview(@RequestBody @Valid ReviewRequest request) {
         return reviewService.createReview(request);
     }

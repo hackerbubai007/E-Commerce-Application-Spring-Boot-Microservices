@@ -1,7 +1,7 @@
 package com.e_com.service;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -16,13 +16,14 @@ import com.e_com.client.response.ProductResponse;
 import com.e_com.entity.OrderEntity;
 import com.e_com.entity.OrderItemEntity;
 import com.e_com.kafka.OrderEventProducer;
+import com.e_com.kafka.event.OrderCreatedEvent;
+import com.e_com.kafka.event.OrderPaidEvent;
+import com.e_com.kafka.event.OrderPaymentFailedEvent;
 import com.e_com.repositories.OrderRepo;
 import com.e_com.request.CreateOrderRequest;
 import com.e_com.request.OrderItemRequest;
 import com.e_com.response.OrderItemResponse;
 import com.e_com.response.OrderResponse;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 
 import jakarta.transaction.Transactional;
 
@@ -30,140 +31,139 @@ import jakarta.transaction.Transactional;
 @Transactional
 public class OrderServiceImpl implements IOrderService {
 
-	@Autowired
-	PaymentClient paymentClient;
+    @Autowired
+    private PaymentClient paymentClient;
 
-	@Autowired
-	private OrderRepo orderRepo;
+    @Autowired
+    private OrderRepo orderRepo;
 
-	@Autowired
-	private ProductClient productClient;
+    @Autowired
+    private ProductClient productClient;
 
-	@Autowired
-	private OrderEventProducer producer;
+    @Autowired
+    private OrderEventProducer producer;
 
-	// ================= CREATE ORDER =================
+    // ================= CREATE ORDER =================
 
-	@Override
-	public OrderResponse createOrder(CreateOrderRequest request) {
+    @Override
+    public OrderResponse createOrder(CreateOrderRequest request) {
 
-		OrderEntity order = new OrderEntity();
-		order.setUserId(request.getUserId());
-		order.setStatus("CREATED");
-		order.setCreatedAt(LocalDateTime.now());
-		order.setItems(new ArrayList<>());
+        OrderEntity order = new OrderEntity();
+        order.setUserId(request.getUserId());
+        order.setStatus("CREATED");
+        order.setCreatedAt(Instant.now());
+        order.setItems(new ArrayList<>());
 
-		BigDecimal totalAmount = BigDecimal.ZERO;
+        BigDecimal totalAmount = BigDecimal.ZERO;
 
-		for (OrderItemRequest itemReq : request.getItems()) {
+        for (OrderItemRequest itemReq : request.getItems()) {
 
-			ProductResponse product = productClient.getProduct(itemReq.getProductId());
+            ProductResponse product = productClient.getProduct(itemReq.getProductId());
 
-			BigDecimal price = BigDecimal.valueOf(product.getPrice());
-			BigDecimal quantity = BigDecimal.valueOf(itemReq.getQuantity());
-			BigDecimal itemTotal = price.multiply(quantity);
+            BigDecimal price = BigDecimal.valueOf(product.getPrice());
+            BigDecimal quantity = BigDecimal.valueOf(itemReq.getQuantity());
+            BigDecimal itemTotal = price.multiply(quantity);
 
-			OrderItemEntity item = new OrderItemEntity();
-			item.setProductId(product.getProductId());
-			item.setProductName(product.getProductName());
-			item.setQuantity(itemReq.getQuantity());
-			item.setPrice(product.getPrice());
-			item.setTotalPrice(itemTotal.doubleValue());
-			item.setOrder(order);
+            OrderItemEntity item = new OrderItemEntity();
+            item.setProductId(product.getProductId());
+            item.setProductName(product.getProductName());
+            item.setQuantity(itemReq.getQuantity());
+            item.setPrice(product.getPrice());
+            item.setTotalPrice(itemTotal.doubleValue());
+            item.setOrder(order);
 
-			totalAmount = totalAmount.add(itemTotal);
-			order.getItems().add(item);
-		}
+            totalAmount = totalAmount.add(itemTotal);
+            order.getItems().add(item);
+        }
 
-		order.setTotalAmount(totalAmount.doubleValue());
+        order.setTotalAmount(totalAmount.doubleValue());
 
-		OrderEntity savedOrder = orderRepo.save(order);
+        OrderEntity savedOrder = orderRepo.save(order);
 
-		// ORDER_CREATED event
-		String orderJson;
-		try {
-			orderJson = new ObjectMapper().writeValueAsString(savedOrder);
-			producer.sendOrderCreatedEvent(orderJson);
-		} catch (JsonProcessingException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
+        // ================= ORDER CREATED EVENT =================
 
-		// ================= Payment =================
+        OrderCreatedEvent createdEvent = new OrderCreatedEvent();
+        createdEvent.setOrderId(savedOrder.getOrderId());
+        createdEvent.setUserId(savedOrder.getUserId());
+        createdEvent.setTotalAmount(BigDecimal.valueOf(savedOrder.getTotalAmount()));
 
-		PaymentRequest paymentRequest = new PaymentRequest();
-		paymentRequest.setUserId(savedOrder.getUserId());
-		paymentRequest.setOrderId(savedOrder.getOrderId());
-		paymentRequest.setAmount(savedOrder.getTotalAmount());
-		paymentRequest.setPaymentMode("UPI");
+        producer.sendOrderCreatedEvent(createdEvent);
 
-		PaymentResponse paymentResponse = paymentClient.processPayment(paymentRequest);
+        // ================= PAYMENT =================
 
-		if ("SUCCESS".equals(paymentResponse.getStatus())) {
-			savedOrder.setStatus("PAID");
-			orderRepo.save(savedOrder);
+        PaymentRequest paymentRequest = new PaymentRequest();
+        paymentRequest.setUserId(savedOrder.getUserId());
+        paymentRequest.setOrderId(savedOrder.getOrderId());
+        paymentRequest.setAmount(savedOrder.getTotalAmount());
+        paymentRequest.setPaymentMode("UPI");
 
-			// ORDER_PAID event
-			String orderJson1;
-			try {
-				orderJson1 = new ObjectMapper().writeValueAsString(savedOrder);
-				producer.sendOrderPaidEvent(orderJson1);
-			} catch (JsonProcessingException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
+        PaymentResponse paymentResponse = paymentClient.processPayment(paymentRequest);
 
-		} else {
-			savedOrder.setStatus("PAYMENT_FAILED");
-			orderRepo.save(savedOrder);
+        if ("SUCCESS".equals(paymentResponse.getStatus())) {
 
-			// ORDER_PAYMENT_FAILED event
-			try {
-				String orderPaymentFail = new ObjectMapper().writeValueAsString(paymentResponse);
-				producer.sendOrderPaymentFailedEvent(orderPaymentFail);
-			} catch (JsonProcessingException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
-		}
+            savedOrder.setStatus("PAID");
+            orderRepo.save(savedOrder);
 
-		return mapToResponse(savedOrder);
-	}
+            // ================= ORDER PAID EVENT =================
 
-	// ================= GET ORDER =================
+            OrderPaidEvent paidEvent = new OrderPaidEvent();
+            paidEvent.setOrderId(savedOrder.getOrderId());
+            paidEvent.setUserId(savedOrder.getUserId());
+            paidEvent.setTotalAmount(BigDecimal.valueOf(savedOrder.getTotalAmount()));
 
-	@Override
-	public OrderResponse getOrder(Long orderId) {
+            producer.sendOrderPaidEvent(paidEvent);
 
-		OrderEntity order = orderRepo.findById(orderId)
-				.orElseThrow(() -> new RuntimeException("Order not found with id: " + orderId));
+        } else {
 
-		return mapToResponse(order);
-	}
+            savedOrder.setStatus("PAYMENT_FAILED");
+            orderRepo.save(savedOrder);
 
-	// ================= MAPPER =================
+            // ================= PAYMENT FAILED EVENT =================
 
-	private OrderResponse mapToResponse(OrderEntity order) {
+            OrderPaymentFailedEvent failedEvent = new OrderPaymentFailedEvent();
+            failedEvent.setOrderId(savedOrder.getOrderId());
+            failedEvent.setReason(paymentResponse.getStatus());
 
-		OrderResponse response = new OrderResponse();
-		response.setOrderId(order.getOrderId());
-		response.setUserId(order.getUserId());
-		response.setStatus(order.getStatus());
-		response.setTotalAmount(order.getTotalAmount());
+            producer.sendOrderPaymentFailedEvent(failedEvent);
+        }
 
-		List<OrderItemResponse> items = order.getItems().stream().map(item -> {
+        return mapToResponse(savedOrder);
+    }
 
-			OrderItemResponse res = new OrderItemResponse();
-			res.setProductId(item.getProductId());
-			res.setProductName(item.getProductName());
-			res.setQuantity(item.getQuantity());
-			res.setPrice(item.getPrice());
-			res.setTotalPrice(item.getTotalPrice());
+    // ================= GET ORDER =================
 
-			return res;
-		}).toList();
+    @Override
+    public OrderResponse getOrder(Long orderId) {
 
-		response.setItems(items);
-		return response;
-	}
+        OrderEntity order = orderRepo.findById(orderId)
+                .orElseThrow(() -> new RuntimeException("Order not found with id: " + orderId));
+
+        return mapToResponse(order);
+    }
+
+    // ================= MAPPER =================
+
+    private OrderResponse mapToResponse(OrderEntity order) {
+
+        OrderResponse response = new OrderResponse();
+        response.setOrderId(order.getOrderId());
+        response.setUserId(order.getUserId());
+        response.setStatus(order.getStatus());
+        response.setTotalAmount(order.getTotalAmount());
+
+        List<OrderItemResponse> items = order.getItems().stream().map(item -> {
+
+            OrderItemResponse res = new OrderItemResponse();
+            res.setProductId(item.getProductId());
+            res.setProductName(item.getProductName());
+            res.setQuantity(item.getQuantity());
+            res.setPrice(item.getPrice());
+            res.setTotalPrice(item.getTotalPrice());
+
+            return res;
+        }).toList();
+
+        response.setItems(items);
+        return response;
+    }
 }
