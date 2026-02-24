@@ -20,7 +20,7 @@ public class OrderController {
 	@Autowired
 	private IOrderService orderService;
 
-	@PostMapping("/order")
+	@PostMapping("/create")
 	public ResponseEntity<OrderResponse> createOrder(@RequestBody CreateOrderRequest request) {
 		return ResponseEntity.ok(orderService.createOrder(request));
 	}

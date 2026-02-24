@@ -2,25 +2,48 @@ package com.e_com.entity;
 
 import java.time.LocalDateTime;
 
-import jakarta.persistence.*;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 
 @Entity
-@Table(name = "payments")
+@Table(name = "payments", uniqueConstraints = { @UniqueConstraint(columnNames = { "orderId" }) })
 public class PaymentEntity {
 
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	private Long paymentId;
 
+	@Column(nullable = false)
 	private Long orderId;
+
+	@Column(nullable = false)
 	private Long userId;
+
+	@Column(nullable = false)
 	private Double amount;
 
+	@Column(nullable = false)
 	private String status; // SUCCESS / FAILED
-	private String paymentMode; // UPI / CARD / NETBANKING
+
+	@Column(nullable = false)
+	private String paymentMode; // UPI / CARD
+
+	@Column(unique = true)
 	private String transactionId;
 
+	@Column(nullable = false, updatable = false)
 	private LocalDateTime createdAt;
+
+	@PrePersist
+	public void onCreate() {
+		this.createdAt = LocalDateTime.now();
+	}
 
 	public Long getPaymentId() {
 		return paymentId;
@@ -86,4 +109,5 @@ public class PaymentEntity {
 		this.createdAt = createdAt;
 	}
 
+	// getters & setters
 }

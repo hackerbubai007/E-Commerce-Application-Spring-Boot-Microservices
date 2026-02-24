@@ -11,13 +11,15 @@ import com.e_com.service.IUserService;
 import jakarta.validation.Valid;
 
 @RestController
+@RequestMapping("/users")
 public class UserController {
 
     @Autowired
+   
     private IUserService service;
 
     // ---------------- CREATE USER ----------------
-    @PostMapping("/users")
+    @PostMapping("/create")
     public ResponseEntity<UserResponse> addUser(@Valid @RequestBody UsersRequest request) {
 
         UserResponse response = service.addUser(request);
@@ -25,7 +27,7 @@ public class UserController {
     }
 
     // ---------------- GET USER BY ID ----------------
-    @GetMapping("/users/{id}")
+    @GetMapping("/{id}")
     public ResponseEntity<UserResponse> findByUserId(@PathVariable Long id) {
 
         UserResponse response = service.findById(id);

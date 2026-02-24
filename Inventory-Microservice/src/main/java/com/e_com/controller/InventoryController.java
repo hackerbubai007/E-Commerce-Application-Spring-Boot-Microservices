@@ -36,3 +36,4 @@ public class InventoryController {
 		return inventoryService.reduceStock(request);
 	}
 }
+

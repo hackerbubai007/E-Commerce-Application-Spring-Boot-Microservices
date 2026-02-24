@@ -1,5 +1,6 @@
 package com.e_com.entity;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -28,7 +29,7 @@ public class OrderEntity {
 
 	private String status; // CREATED, PAID, SHIPPED
 
-	private LocalDateTime createdAt;
+	private Instant createdAt;
 
 	@OneToMany(mappedBy = "order", cascade = CascadeType.ALL)
 	@JsonManagedReference
@@ -66,11 +67,11 @@ public class OrderEntity {
 		this.status = status;
 	}
 
-	public LocalDateTime getCreatedAt() {
+	public Instant getCreatedAt() {
 		return createdAt;
 	}
 
-	public void setCreatedAt(LocalDateTime createdAt) {
+	public void setCreatedAt(Instant createdAt) {
 		this.createdAt = createdAt;
 	}
 
